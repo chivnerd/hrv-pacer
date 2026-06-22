@@ -5,6 +5,31 @@ expanding/contracting circle, and pace your breath for activation, recovery,
 stress relief, or sleep. No build step, no dependencies, no tracking — it's one
 `index.html`.
 
+## Quick start with Claude
+
+Want it running for yourself without touching a terminal? Paste the prompt below
+into your own Claude account and let it walk you through forking, deploying, and
+wiring up the heart-rate debrief.
+
+```text
+I want to set up the HRV Pacer breathing app for myself. The repo is a single
+static index.html (no build step, no dependencies). Walk me through it one step
+at a time, waiting for me to confirm each step before moving on:
+
+1. Fork or copy the repo (https://github.com/chivnerd/hrv-pacer) to my own GitHub.
+2. Enable GitHub Pages so it's live at my-username.github.io/hrv-pacer — tell me
+   exactly which settings to click.
+3. Help me add the live page to my iPhone home screen as a full-screen web app.
+4. Explain how to capture heart rate per session: starting an "Other" workout on
+   my Apple Watch around each breathing session, and what read-only HealthKit
+   (Heart Rate) access you need so you can analyze a session afterward. Tell me
+   what to enable on my end.
+5. (Optional) Show me where in index.html the PROTOCOLS object is so I can tweak
+   breath timings or add my own protocol.
+
+Assume I'm not a developer. Keep each step short and concrete.
+```
+
 ## Protocols
 
 | Mode | Pattern | Default | Purpose |
@@ -69,6 +94,35 @@ nothing here writes to Health.
 The prompt scopes the request to the session's time window, so Claude can fetch
 just the heart-rate samples for that span and show how your HR trended across the
 breathing session.
+
+#### Prompt to share with your Claude
+
+The **DEBRIEF** button copies a session-specific prompt automatically, but if you
+want to paste it manually (or prime Claude on what you're after), use this — fill
+in the bracketed values from the completed session:
+
+```text
+I just finished an HRV breathing session and want to see how it affected my heart rate.
+
+Session details:
+- Protocol: [e.g. BOX 4·4·4·4]
+- Rounds: [e.g. 15]
+- Started: ~[start time]
+- Ended: ~[end time]
+
+Using my HealthKit data (read-only), pull my heart-rate samples for that exact
+time window and analyze the session:
+1. Show how HR trended from start to end (a simple sparkline or min/avg/max is fine).
+2. Report my starting HR, ending HR, and the overall change.
+3. Tell me whether HR settled/declined over the session, which is what I'd expect
+   from effective paced breathing.
+
+If you don't yet have access to my Health data, tell me what to enable so you can
+read Heart Rate for that window. Don't write anything to HealthKit — read only.
+```
+
+> Tip: you can save this as a Claude Project instruction or a saved prompt so each
+> session debrief is one paste away.
 
 > **Permissions summary:** Apple Watch → an active **Other** workout for the
 > session. Claude → **read** access to HealthKit **Heart Rate** for the session's
