@@ -390,7 +390,6 @@
       <div class="mode-duration">2.5 min</div>
     </button>
   </div>
-    <div style="font-size:8px;letter-spacing:0.25em;color:#333;margin-top:18px;text-transform:uppercase;">Build Jun-2026 · v3 · duration-picker</div>
 </div>
 <div class="session-screen hidden" id="sessionScreen">
   <div class="session-bar" id="sessionBar"></div>
@@ -517,6 +516,7 @@
   let running = false, paused = false;
   let currentRound = 0, currentPhaseIdx = 0;
   let phaseSecondsLeft = 0, totalSecondsLeft = 0, totalSeconds = 0;
+  let phaseEndTime = 0, totalEndTime = 0; // absolute timestamps (ms) the current phase/session should end at
   let ticker = null;
   let sessionStartTime = null, sessionEndTime = null;
 
@@ -656,17 +656,20 @@
     ringProgress.style.strokeDashoffset = circumference - (pct * circumference);
   }
 
+  // Ticks run off absolute end timestamps (phaseEndTime/totalEndTime) rather than
+  // decrementing a counter each call, so backgrounded/throttled tabs don't drift
+  // the displayed time away from the actual elapsed wall-clock time.
   function tick() {
     if (!running || paused) return;
-    phaseSecondsLeft--;
-    totalSecondsLeft--;
+    const now = Date.now();
+    phaseSecondsLeft = Math.max(0, Math.ceil((phaseEndTime - now) / 1000));
+    totalSecondsLeft = Math.max(0, Math.ceil((totalEndTime - now) / 1000));
 
     updateRing();
-    phaseCount.textContent = phaseSecondsLeft <= 0 ? protocol.phases[currentPhaseIdx].dur : phaseSecondsLeft;
-    timeDisplay.textContent = formatTime(Math.max(0, totalSecondsLeft));
+    timeDisplay.textContent = formatTime(totalSecondsLeft);
     sessionBar.style.width = ((totalSeconds - totalSecondsLeft) / totalSeconds * 100) + '%';
 
-    if (phaseSecondsLeft <= 0) {
+    if (phaseEndTime - now <= 0) {
       currentPhaseIdx++;
       if (currentPhaseIdx >= protocol.phases.length) {
         currentPhaseIdx = 0;
@@ -675,7 +678,9 @@
       }
       if (currentRound >= activeRounds) { finishSession(); return; }
 
-      phaseSecondsLeft = protocol.phases[currentPhaseIdx].dur;
+      const nextDur = protocol.phases[currentPhaseIdx].dur;
+      phaseEndTime = now + nextDur * 1000;
+      phaseSecondsLeft = nextDur;
       phaseLabel.textContent = protocol.phases[currentPhaseIdx].label;
       phaseCount.textContent = phaseSecondsLeft;
       applyPhaseStyle(currentPhaseIdx);
@@ -692,6 +697,10 @@
     totalSeconds = activeRounds * cycleSeconds();
     totalSecondsLeft = totalSeconds;
 
+    const now = Date.now();
+    phaseEndTime = now + phaseSecondsLeft * 1000;
+    totalEndTime = now + totalSecondsLeft * 1000;
+
     durationPicker.classList.add('hidden');
     roundDisplay.textContent = 0;
     timeDisplay.textContent = formatTime(totalSeconds);
@@ -706,11 +715,20 @@
 
     sessionStartTime = new Date();
     sessionEndTime = null;
-    ticker = setInterval(tick, 1000);
+    ticker = setInterval(tick, 250);
   }
 
-  function pauseSession() { paused = true; mainBtn.textContent = 'RESUME'; clearInterval(ticker); }
-  function resumeSession() { paused = false; mainBtn.textContent = 'PAUSE'; ticker = setInterval(tick, 1000); }
+  function pauseSession() {
+    paused = true; mainBtn.textContent = 'RESUME'; clearInterval(ticker);
+  }
+
+  function resumeSession() {
+    paused = false; mainBtn.textContent = 'PAUSE';
+    const now = Date.now();
+    phaseEndTime = now + phaseSecondsLeft * 1000;
+    totalEndTime = now + totalSecondsLeft * 1000;
+    ticker = setInterval(tick, 250);
+  }
 
   function finishSession() {
     running = false;
