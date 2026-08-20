@@ -259,6 +259,19 @@
 
   .claude-snippet-copy { width: 100%; }
 
+  .claude-snippet-status {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    margin-top: 8px;
+    min-height: 1em;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .claude-snippet-status.visible { opacity: 1; }
+
   /* SESSION SCREEN */
   .session-screen {
     position: fixed;
@@ -555,6 +568,7 @@
             <div class="claude-snippet-text" id="claudeSnippetText">Breathwork debriefs come from the HRV Pacer app. Lead with how the session went — did heart rate settle, did it hold steady, did it drift up. Numbers are supporting detail, not the headline. Compare against recent sessions when there's something worth noting, and skip the comparison when there isn't. Keep the tone warm and steady, like a friend checking in — not a lab report.</div>
             <button type="button" class="btn claude-snippet-copy" id="claudeSnippetCopy">COPY</button>
           </div>
+          <div class="claude-snippet-status" id="claudeSnippetStatus"></div>
         </div>
       </div>
     </div>
@@ -995,11 +1009,17 @@
   const claudeToggle = document.getElementById('claudeToggle');
   const claudePanel  = document.getElementById('claudePanel');
 
+  function refreshClaudePanelHeight() {
+    if (claudeToggle.classList.contains('open')) {
+      claudePanel.style.maxHeight = claudePanel.scrollHeight + 'px';
+    }
+  }
+
   function toggleClaudePanel() {
     const isOpen = claudeToggle.classList.toggle('open');
     claudeToggle.setAttribute('aria-expanded', String(isOpen));
     if (isOpen) {
-      claudePanel.style.maxHeight = claudePanel.scrollHeight + 'px';
+      refreshClaudePanelHeight();
       setTimeout(function () {
         claudeToggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 60);
@@ -1009,16 +1029,47 @@
   }
   bindTap(claudeToggle, toggleClaudePanel);
 
+  // Recompute the open panel's height after things that can reflow its
+  // content without firing a click on it: viewport resize/rotation, and
+  // the webfont swap (Bebas Neue/DM Mono load async via @import).
+  window.addEventListener('resize', refreshClaudePanelHeight);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(refreshClaudePanelHeight);
+  }
+
+  const claudeSnippetStatus = document.getElementById('claudeSnippetStatus');
+  let claudeSnippetStatusTimer = null;
+
+  function setClaudeSnippetStatus(text) {
+    claudeSnippetStatus.textContent = text;
+    claudeSnippetStatus.classList.add('visible');
+    clearTimeout(claudeSnippetStatusTimer);
+    claudeSnippetStatusTimer = setTimeout(function () {
+      claudeSnippetStatus.classList.remove('visible');
+    }, 2500);
+  }
+
+  function selectClaudeSnippetText() {
+    const node = document.getElementById('claudeSnippetText');
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
   bindTap(document.getElementById('claudeSnippetCopy'), function () {
     const text = document.getElementById('claudeSnippetText').textContent.trim();
-    const btn = document.getElementById('claudeSnippetCopy');
-    const showCopied = function () {
-      const orig = btn.textContent;
-      btn.textContent = 'COPIED';
-      setTimeout(function () { btn.textContent = orig; }, 2000);
-    };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(showCopied).catch(function () {});
+      navigator.clipboard.writeText(text)
+        .then(function () { setClaudeSnippetStatus('Copied'); })
+        .catch(function () {
+          selectClaudeSnippetText();
+          setClaudeSnippetStatus('Select all → copy');
+        });
+    } else {
+      selectClaudeSnippetText();
+      setClaudeSnippetStatus('Select all → copy');
     }
   });
 </script>
