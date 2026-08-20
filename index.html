@@ -532,27 +532,27 @@
     </button>
     <div class="claude-panel" id="claudePanel">
       <div class="claude-panel-inner">
-        <p class="claude-panel-note">Framing is optional — the pacer works standalone.</p>
+        <p class="claude-panel-note">This part is optional — the pacer works fine on its own.</p>
 
         <div>
           <div class="claude-section-title">What you need</div>
           <ul class="claude-list">
             <li>Claude on iPhone, with Health access allowed</li>
-            <li>Apple Watch worn</li>
-            <li>An "Other" workout started on the watch before tapping START — it raises heart rate sampling from every few minutes to every few seconds. Skip it and there's usually not enough data to say anything useful.</li>
+            <li>Apple Watch on your wrist</li>
+            <li>An "Other" workout started on the watch before tapping START, so it samples heart rate every few seconds instead of every few minutes. Without it, there's usually not quite enough detail to say much.</li>
           </ul>
         </div>
 
         <div>
           <div class="claude-section-title">How to use it</div>
-          <p class="claude-section-text">Finish a session, tap DEBRIEF, paste the copied prompt into Claude.</p>
+          <p class="claude-section-text">When you finish a session, tap DEBRIEF and paste the copied prompt into Claude.</p>
         </div>
 
         <div>
           <div class="claude-section-title">Optional context</div>
-          <p class="claude-section-text">Add this to a Claude Project's instructions:</p>
+          <p class="claude-section-text">You can add this to a Claude Project's instructions:</p>
           <div class="claude-snippet">
-            <div class="claude-snippet-text" id="claudeSnippetText">Breathwork debriefs come from the HRV Pacer app. Lead with how the session went — did heart rate settle, did it hold steady, did it drift up. Numbers are supporting detail, not the headline. Compare against recent sessions when there's something worth noting, and skip the comparison when there isn't. Talk like a training partner, not a lab report.</div>
+            <div class="claude-snippet-text" id="claudeSnippetText">Breathwork debriefs come from the HRV Pacer app. Lead with how the session went — did heart rate settle, did it hold steady, did it drift up. Numbers are supporting detail, not the headline. Compare against recent sessions when there's something worth noting, and skip the comparison when there isn't. Keep the tone warm and steady, like a friend checking in — not a lab report.</div>
             <button type="button" class="btn claude-snippet-copy" id="claudeSnippetCopy">COPY</button>
           </div>
         </div>
@@ -587,7 +587,7 @@
 
   <div class="cycle-dots" id="cycleDots"></div>
 
-  <div class="idle-hint" id="idleHint">optional: start "other" workout on watch first — richer heart rate data</div>
+  <div class="idle-hint" id="idleHint">optional: an "other" workout on your watch picks up more heart rate detail</div>
 
   <div class="controls">
     <button class="btn primary" id="mainBtn" onclick="handleMain()">START</button>
@@ -942,7 +942,7 @@
     if (!sessionStartTime) return;
     const end = sessionEndTime || new Date();
     const fmt = (d) => d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    const prompt = `Breathwork debrief — ${protocol.badge}, ${currentRound} rounds, ${fmt(sessionStartTime)}–${fmt(end)}. Pull my heart rate for that window and give me a short, encouraging, plain-language read on how it went — did heart rate settle, hold steady, or drift up. Numbers are supporting detail, not the headline.`;
+    const prompt = `Breathwork debrief — ${protocol.badge}, ${currentRound} rounds, ${fmt(sessionStartTime)}–${fmt(end)}. Pull my heart rate for that window and give me a short, warm, plain-language read on how it went — did heart rate settle, hold steady, or drift up. Numbers are supporting detail, not the headline.`;
     const tryClipboard = navigator.clipboard && navigator.clipboard.writeText(prompt);
     if (tryClipboard) {
       tryClipboard.then(() => {
