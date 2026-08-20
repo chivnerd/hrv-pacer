@@ -23,12 +23,11 @@
     background: var(--bg);
     color: var(--text);
     font-family: 'DM Mono', monospace;
-    height: 100dvh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    overflow: hidden;
+    justify-content: flex-start;
     user-select: none;
   }
 
@@ -49,7 +48,7 @@
     align-items: center;
     gap: 24px;
     width: 100%;
-    padding: 40px 24px;
+    padding: 40px 24px calc(40px + env(safe-area-inset-bottom));
   }
 
   .mode-screen.hidden { display: none; }
@@ -128,14 +127,161 @@
     letter-spacing: 0.1em;
   }
 
+  /* WORKS WITH CLAUDE PANEL */
+  .claude-panel-wrap {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .claude-toggle {
+    width: 100%;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 4px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.2s ease;
+  }
+
+  .claude-toggle * { pointer-events: none; }
+
+  .claude-toggle:hover, .claude-toggle:active { border-color: var(--accent-dim); }
+
+  .claude-toggle-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text);
+    flex: 1;
+    text-align: left;
+  }
+
+  .claude-toggle-hint {
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .claude-toggle-icon {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    color: var(--muted);
+    transition: transform 0.25s ease, color 0.2s ease;
+    width: 12px;
+    text-align: center;
+  }
+
+  .claude-toggle.open .claude-toggle-icon { transform: rotate(45deg); color: var(--accent); }
+  .claude-toggle.open .claude-toggle-label { color: var(--accent); }
+
+  .claude-panel {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+
+  .claude-panel-inner {
+    padding: 16px 2px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .claude-panel-note {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    line-height: 1.6;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .claude-section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    margin-bottom: 8px;
+  }
+
+  .claude-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .claude-list li {
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--text);
+    padding-left: 14px;
+    position: relative;
+  }
+
+  .claude-list li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--accent-dim);
+  }
+
+  .claude-section-text {
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+
+  .claude-snippet {
+    background: #0d0d0d;
+    border: 1px solid #222;
+    border-radius: 3px;
+    padding: 12px;
+    margin-top: 8px;
+  }
+
+  .claude-snippet-text {
+    font-size: 10px;
+    line-height: 1.6;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .claude-snippet-copy { width: 100%; }
+
+  .claude-snippet-status {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    margin-top: 8px;
+    min-height: 1em;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .claude-snippet-status.visible { opacity: 1; }
+
   /* SESSION SCREEN */
   .session-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    background: var(--bg);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 100%;
-    height: 100%;
   }
 
   .session-screen.hidden { display: none; }
@@ -390,6 +536,43 @@
       <div class="mode-duration">2.5 min</div>
     </button>
   </div>
+
+  <div class="claude-panel-wrap">
+    <button type="button" class="claude-toggle" id="claudeToggle" aria-expanded="false">
+      <span class="claude-toggle-label">Works with Claude</span>
+      <span class="claude-toggle-hint">optional</span>
+      <span class="claude-toggle-icon" id="claudeToggleIcon">+</span>
+    </button>
+    <div class="claude-panel" id="claudePanel">
+      <div class="claude-panel-inner">
+        <p class="claude-panel-note">This part is optional — the pacer works fine on its own.</p>
+
+        <div>
+          <div class="claude-section-title">What you need</div>
+          <ul class="claude-list">
+            <li>Claude on iPhone, with Health access allowed</li>
+            <li>Apple Watch on your wrist</li>
+            <li>An "Other" workout started on the watch before tapping START, so it samples heart rate every few seconds instead of every few minutes. Without it, there's usually not quite enough detail to say much.</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="claude-section-title">How to use it</div>
+          <p class="claude-section-text">When you finish a session, tap DEBRIEF and paste the copied prompt into Claude.</p>
+        </div>
+
+        <div>
+          <div class="claude-section-title">Optional context</div>
+          <p class="claude-section-text">You can add this to a Claude Project's instructions:</p>
+          <div class="claude-snippet">
+            <div class="claude-snippet-text" id="claudeSnippetText">Breathwork debriefs come from the HRV Pacer app. Lead with how the session went — did heart rate settle, did it hold steady, did it drift up. Numbers are supporting detail, not the headline. Compare against recent sessions when there's something worth noting, and skip the comparison when there isn't. Keep the tone warm and steady, like a friend checking in — not a lab report.</div>
+            <button type="button" class="btn claude-snippet-copy" id="claudeSnippetCopy">COPY</button>
+          </div>
+          <div class="claude-snippet-status" id="claudeSnippetStatus"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 <div class="session-screen hidden" id="sessionScreen">
   <div class="session-bar" id="sessionBar"></div>
@@ -418,7 +601,7 @@
 
   <div class="cycle-dots" id="cycleDots"></div>
 
-  <div class="idle-hint" id="idleHint">start "other" workout on watch · then tap start</div>
+  <div class="idle-hint" id="idleHint">optional: an "other" workout on your watch picks up more heart rate detail</div>
 
   <div class="controls">
     <button class="btn primary" id="mainBtn" onclick="handleMain()">START</button>
@@ -618,6 +801,7 @@
     sessionScreen.classList.add('hidden');
     modeScreen.classList.remove('hidden');
     idleHint.classList.remove('visible');
+    window.scrollTo(0, 0);
   }
 
   function buildDots() {
@@ -772,7 +956,7 @@
     if (!sessionStartTime) return;
     const end = sessionEndTime || new Date();
     const fmt = (d) => d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    const prompt = `HRV breath session debrief — ${protocol.badge}, ${currentRound} rounds, started ~${fmt(sessionStartTime)}, ended ~${fmt(end)}. Pull my heart rate samples from HealthKit for that window and show me how HR trended across the session.`;
+    const prompt = `Breathwork debrief — ${protocol.badge}, ${currentRound} rounds, ${fmt(sessionStartTime)}–${fmt(end)}. Pull my heart rate for that window and give me a short, warm, plain-language read on how it went — did heart rate settle, hold steady, or drift up. Numbers are supporting detail, not the headline.`;
     const tryClipboard = navigator.clipboard && navigator.clipboard.writeText(prompt);
     if (tryClipboard) {
       tryClipboard.then(() => {
@@ -819,6 +1003,74 @@
 
   document.querySelectorAll('.mode-card').forEach(function (card) {
     bindTap(card, function () { selectMode(card.dataset.mode); });
+  });
+
+  // "Works with Claude" panel — collapsed by default, expands on tap.
+  const claudeToggle = document.getElementById('claudeToggle');
+  const claudePanel  = document.getElementById('claudePanel');
+
+  function refreshClaudePanelHeight() {
+    if (claudeToggle.classList.contains('open')) {
+      claudePanel.style.maxHeight = claudePanel.scrollHeight + 'px';
+    }
+  }
+
+  function toggleClaudePanel() {
+    const isOpen = claudeToggle.classList.toggle('open');
+    claudeToggle.setAttribute('aria-expanded', String(isOpen));
+    if (isOpen) {
+      refreshClaudePanelHeight();
+      setTimeout(function () {
+        claudeToggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+    } else {
+      claudePanel.style.maxHeight = '0px';
+    }
+  }
+  bindTap(claudeToggle, toggleClaudePanel);
+
+  // Recompute the open panel's height after things that can reflow its
+  // content without firing a click on it: viewport resize/rotation, and
+  // the webfont swap (Bebas Neue/DM Mono load async via @import).
+  window.addEventListener('resize', refreshClaudePanelHeight);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(refreshClaudePanelHeight);
+  }
+
+  const claudeSnippetStatus = document.getElementById('claudeSnippetStatus');
+  let claudeSnippetStatusTimer = null;
+
+  function setClaudeSnippetStatus(text) {
+    claudeSnippetStatus.textContent = text;
+    claudeSnippetStatus.classList.add('visible');
+    clearTimeout(claudeSnippetStatusTimer);
+    claudeSnippetStatusTimer = setTimeout(function () {
+      claudeSnippetStatus.classList.remove('visible');
+    }, 2500);
+  }
+
+  function selectClaudeSnippetText() {
+    const node = document.getElementById('claudeSnippetText');
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  bindTap(document.getElementById('claudeSnippetCopy'), function () {
+    const text = document.getElementById('claudeSnippetText').textContent.trim();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(function () { setClaudeSnippetStatus('Copied'); })
+        .catch(function () {
+          selectClaudeSnippetText();
+          setClaudeSnippetStatus('Select all → copy');
+        });
+    } else {
+      selectClaudeSnippetText();
+      setClaudeSnippetStatus('Select all → copy');
+    }
   });
 </script>
 </body>
