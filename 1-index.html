@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>HRV PACER</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --accent: #c8f060;
+    --accent-dim: #8aaa3a;
+    --text: #e8e8e8;
+    --muted: #444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    user-select: none;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.4;
+  }
+
+  /* MODE SELECTOR SCREEN */
+  .mode-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+    padding: 40px 24px calc(40px + env(safe-area-inset-bottom));
+  }
+
+  .mode-screen.hidden { display: none; }
+
+  .app-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .mode-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .mode-card {
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 4px;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    /* button resets so it looks identical to the old div */
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mode-card * { pointer-events: none; }
+
+  .mode-card:hover, .mode-card:active {
+    border-color: var(--accent);
+    background: rgba(200,240,96,0.04);
+  }
+
+  .mode-icon {
+    font-size: 20px;
+    font-family: system-ui, sans-serif;
+    width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .mode-info { flex: 1; }
+
+  .mode-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.15em;
+    color: var(--text);
+  }
+
+  .mode-detail {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  .mode-duration {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    color: var(--accent-dim);
+    letter-spacing: 0.1em;
+  }
+
+  /* SESSION DEBRIEF PANEL */
+  .claude-panel-wrap {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .claude-toggle {
+    width: 100%;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 4px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.2s ease;
+  }
+
+  .claude-toggle * { pointer-events: none; }
+
+  .claude-toggle:hover, .claude-toggle:active { border-color: var(--accent-dim); }
+
+  .claude-toggle-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text);
+    flex: 1;
+    text-align: left;
+  }
+
+  .claude-toggle-hint {
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .claude-toggle-icon {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    color: var(--muted);
+    transition: transform 0.25s ease, color 0.2s ease;
+    width: 12px;
+    text-align: center;
+  }
+
+  .claude-toggle.open .claude-toggle-icon { transform: rotate(45deg); color: var(--accent); }
+  .claude-toggle.open .claude-toggle-label { color: var(--accent); }
+
+  .claude-panel {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+
+  .claude-panel-inner {
+    padding: 16px 2px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .claude-panel-note {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    line-height: 1.6;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .claude-section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    margin-bottom: 8px;
+  }
+
+  .claude-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .claude-list li {
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--text);
+    padding-left: 14px;
+    position: relative;
+  }
+
+  .claude-list li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--accent-dim);
+  }
+
+  .claude-section-text {
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+
+  .claude-snippet {
+    background: #0d0d0d;
+    border: 1px solid #222;
+    border-radius: 3px;
+    padding: 12px;
+    margin-top: 8px;
+  }
+
+  .claude-snippet-text {
+    font-size: 10px;
+    line-height: 1.6;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .claude-snippet-copy { width: 100%; }
+
+  .claude-snippet-status {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    margin-top: 8px;
+    min-height: 1em;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .claude-snippet-status.visible { opacity: 1; }
+
+  /* SESSION SCREEN */
+  .session-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .session-screen.hidden { display: none; }
+
+  .session-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    background: var(--accent);
+    width: 0%;
+    transition: width 1s linear;
+    opacity: 0.6;
+  }
+
+  .header {
+    position: fixed;
+    top: calc(20px + env(safe-area-inset-top));
+    left: 80px; right: 16px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .back-btn {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top));
+    left: 16px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    text-transform: uppercase;
+    padding: 4px 8px;
+  }
+
+  .back-btn:hover { color: var(--text); }
+
+  .session-title {
+    white-space: nowrap;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+  }
+
+  .protocol-badge {
+    white-space: nowrap;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--accent-dim);
+    border: 1px solid #222;
+    padding: 2px 8px;
+    border-radius: 2px;
+  }
+
+  /* Circle */
+  .circle-container {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ring-track { position: absolute; inset: 0; }
+  .ring-track svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: #1a1a1a; stroke-width: 3; }
+  .ring-progress {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 754;
+    stroke-dashoffset: 754;
+    transition: stroke 0.3s ease;
+    filter: drop-shadow(0 0 6px var(--accent));
+  }
+
+  .breath-circle {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #1e2a0a, #0d1505);
+    border: 1px solid #1f2f0a;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    transition: transform 0.1s ease;
+    box-shadow: 0 0 40px rgba(200,240,96,0.04);
+  }
+
+  .breath-circle.expanding { animation: expand var(--phase-dur, 4s) ease-in-out forwards; box-shadow: 0 0 60px rgba(200,240,96,0.12); }
+  .breath-circle.holding-in { transform: scale(1.18); box-shadow: 0 0 60px rgba(200,240,96,0.15); }
+  .breath-circle.contracting { animation: contract var(--phase-dur, 4s) ease-in-out forwards; }
+  .breath-circle.holding-out { transform: scale(1.0); }
+  .breath-circle.sigh-inhale1 { animation: expand 2s ease-in forwards; }
+  .breath-circle.sigh-inhale2 { animation: expand2 1s ease-in forwards; box-shadow: 0 0 60px rgba(200,240,96,0.15); }
+  .breath-circle.sigh-exhale { animation: contract 8s ease-out forwards; }
+
+  @keyframes expand { from { transform: scale(1.0); } to { transform: scale(1.18); } }
+  @keyframes expand2 { from { transform: scale(1.18); } to { transform: scale(1.22); } }
+  @keyframes contract { from { transform: scale(1.18); } to { transform: scale(1.0); } }
+
+  .phase-count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px; line-height: 1;
+    color: var(--accent);
+    filter: drop-shadow(0 0 8px rgba(200,240,96,0.4));
+    min-width: 2ch; text-align: center;
+  }
+
+  .phase-label {
+    font-size: 9px; letter-spacing: 0.2em;
+    color: var(--accent-dim); text-transform: uppercase; margin-top: 4px;
+  }
+
+  .cycle-dots { display: flex; gap: 6px; margin-top: 20px; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); transition: all 0.3s ease; }
+  .dot.active { background: var(--accent); transform: scale(1.4); }
+  .dot.done { background: var(--accent-dim); }
+
+  /* Stats */
+  .stats {
+    position: fixed; bottom: calc(40px + env(safe-area-inset-bottom));
+    display: flex; gap: 40px; align-items: flex-end;
+  }
+  .stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--text); line-height: 1; }
+  .stat-value.accent { color: var(--accent); }
+  .stat-label { font-size: 9px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
+  .stat-divider { width: 1px; height: 32px; background: var(--muted); opacity: 0.3; margin-bottom: 4px; }
+
+  /* Controls */
+  .controls { position: fixed; bottom: calc(110px + env(safe-area-inset-bottom)); display: flex; gap: 16px; }
+
+  .btn {
+    background: none; border: 1px solid var(--muted);
+    color: var(--muted); font-family: 'DM Mono', monospace;
+    font-size: 10px; letter-spacing: 0.15em;
+    padding: 8px 20px; cursor: pointer;
+    text-transform: uppercase; transition: all 0.2s ease; border-radius: 2px;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { border-color: var(--accent); color: var(--accent); background: rgba(200,240,96,0.05); }
+  .btn.primary:hover { background: rgba(200,240,96,0.12); }
+
+  .idle-hint {
+    position: fixed; bottom: calc(170px + env(safe-area-inset-bottom));
+    font-size: 10px; letter-spacing: 0.13em;
+    color: var(--muted); text-transform: uppercase;
+    opacity: 0; transition: opacity 0.5s ease;
+    text-align: center; max-width: 280px;
+  }
+  .idle-hint.visible { opacity: 1; }
+
+  /* Duration picker */
+  .duration-picker {
+    position: fixed;
+    top: 56px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 0 16px;
+    transition: opacity 0.3s ease;
+  }
+  .duration-picker.hidden { display: none; }
+  .dur-chip {
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 3px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    -webkit-appearance: none; appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    transition: all 0.2s ease;
+  }
+  .dur-chip * { pointer-events: none; }
+  .dur-chip:hover, .dur-chip:active { border-color: var(--accent-dim); }
+  .dur-chip.selected {
+    border-color: var(--accent);
+    background: rgba(200,240,96,0.06);
+    color: var(--accent);
+  }
+  .dur-chip-time {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; letter-spacing: 0.08em; line-height: 1;
+  }
+  .dur-chip-rounds {
+    font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .dur-chip.selected .dur-chip-rounds { color: var(--accent-dim); }
+  .dur-chip-default {
+    font-size: 7px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--accent-dim); margin-top: 1px;
+  }
+
+  /* Complete overlay */
+  .complete-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(10,10,10,0.92);
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; z-index: 50;
+  }
+  .complete-overlay.visible { display: flex; }
+  .complete-title { font-family: 'Bebas Neue', sans-serif; font-size: 48px; color: var(--accent); letter-spacing: 0.1em; filter: drop-shadow(0 0 20px rgba(200,240,96,0.3)); }
+  .complete-sub { font-size: 11px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
+  .complete-rounds { font-size: 11px; letter-spacing: 0.1em; color: var(--accent-dim); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<!-- MODE SELECTION -->
+<div class="mode-screen" id="modeScreen">
+  <div class="app-title">HRV Pacer</div>
+  <div class="mode-grid">
+    <button type="button" class="mode-card" data-mode="preworkout">
+      <div class="mode-icon">⚡</div>
+      <div class="mode-info">
+        <div class="mode-name">Pre-Workout</div>
+        <div class="mode-detail">Box 4·4·4·4 · 15 rounds · activation</div>
+      </div>
+      <div class="mode-duration">4 min</div>
+    </button>
+    <button type="button" class="mode-card" data-mode="postworkout">
+      <div class="mode-icon">🔄</div>
+      <div class="mode-info">
+        <div class="mode-name">Post-Workout</div>
+        <div class="mode-detail">Slow breathing 6·6 · 10 rounds · recovery</div>
+      </div>
+      <div class="mode-duration">2 min</div>
+    </button>
+    <button type="button" class="mode-card" data-mode="resonancetest">
+      <div class="mode-icon">~</div>
+      <div class="mode-info">
+        <div class="mode-name">Find your rate</div>
+        <div class="mode-detail">5 rates · 2 min each · no holds</div>
+      </div>
+      <div class="mode-duration">10 min</div>
+    </button>
+    <button type="button" class="mode-card" data-mode="cortisol">
+      <div class="mode-icon">🧘</div>
+      <div class="mode-info">
+        <div class="mode-name">Cortisol Reset</div>
+        <div class="mode-detail">Physiological sigh · 10 rounds · stress relief</div>
+      </div>
+      <div class="mode-duration">2 min</div>
+    </button>
+    <button type="button" class="mode-card" data-mode="sleep">
+      <div class="mode-icon">🌙</div>
+      <div class="mode-info">
+        <div class="mode-name">Pre-Sleep</div>
+        <div class="mode-detail">4-7-8 · 8 rounds · wind-down</div>
+      </div>
+      <div class="mode-duration">2.5 min</div>
+    </button>
+  </div>
+
+  <div class="claude-panel-wrap">
+    <button type="button" class="claude-toggle" id="claudeToggle" aria-expanded="false">
+      <span class="claude-toggle-label">Session debrief</span>
+      <span class="claude-toggle-hint">optional</span>
+      <span class="claude-toggle-icon" id="claudeToggleIcon">+</span>
+    </button>
+    <div class="claude-panel" id="claudePanel">
+      <div class="claude-panel-inner">
+        <p class="claude-panel-note">This part is optional — the pacer works fine on its own.</p>
+
+        <div>
+          <div class="claude-section-title">What you need</div>
+          <ul class="claude-list">
+            <li>An app or service with read access to your heart-rate records</li>
+            <li>Apple Watch on your wrist</li>
+            <li>An "Other" workout started on the watch before tapping START, so it samples heart rate every few seconds instead of every few minutes. Without it, there's usually not quite enough detail to say much.</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="claude-section-title">How to use it</div>
+          <p class="claude-section-text">When you finish a session, tap DEBRIEF to copy the dated session details. Share them only with a service you trust and explicitly authorize to read your health data. The pacer does not send them anywhere.</p>
+        </div>
+
+        <div>
+          <div class="claude-section-title">Optional context</div>
+          <p class="claude-section-text">Optional context for your own debrief workflow:</p>
+          <div class="claude-snippet">
+            <div class="claude-snippet-text" id="claudeSnippetText">Breathwork debriefs come from the HRV Pacer app. Lead with how the session went — did heart rate settle, did it hold steady, did it drift up. Numbers are supporting detail, not the headline. Compare against recent sessions when there's something worth noting, and skip the comparison when there isn't. Keep the tone warm and steady, like a friend checking in — not a lab report.</div>
+            <button type="button" class="btn claude-snippet-copy" id="claudeSnippetCopy">COPY</button>
+          </div>
+          <div class="claude-snippet-status" id="claudeSnippetStatus"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="session-screen hidden" id="sessionScreen">
+  <div class="session-bar" id="sessionBar"></div>
+
+  <button class="back-btn" onclick="goBack()">← modes</button>
+
+  <div class="header">
+    <span class="session-title" id="sessionTitle">HRV Pacer</span>
+    <span class="protocol-badge" id="protocolBadge">BOX 4·4·4·4</span>
+  </div>
+
+  <div class="duration-picker" id="durationPicker"></div>
+
+  <div class="circle-container">
+    <div class="ring-track">
+      <svg viewBox="0 0 260 260">
+        <circle class="ring-bg" cx="130" cy="130" r="120"/>
+        <circle class="ring-progress" id="ringProgress" cx="130" cy="130" r="120"/>
+      </svg>
+    </div>
+    <div class="breath-circle" id="breathCircle">
+      <div class="phase-count" id="phaseCount">—</div>
+      <div class="phase-label" id="phaseLabel">ready</div>
+    </div>
+  </div>
+
+  <div class="cycle-dots" id="cycleDots"></div>
+
+  <div class="idle-hint" id="idleHint">optional: an "other" workout on your watch picks up more heart rate detail</div>
+
+  <div class="controls">
+    <button class="btn primary" id="mainBtn" onclick="handleMain()">START</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value" id="roundDisplay">0</div>
+      <div class="stat-label">rounds</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-value accent" id="timeDisplay">—</div>
+      <div class="stat-label">remaining</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-value" id="totalRoundsDisplay">—</div>
+      <div class="stat-label">target</div>
+    </div>
+  </div>
+
+  <div class="complete-overlay" id="completeOverlay">
+    <div class="complete-title">SESSION DONE</div>
+    <div class="complete-sub" id="completeSub">Ready to work</div>
+    <div class="complete-rounds" id="completeRounds"></div>
+    <br>
+    <div style="display:flex;gap:12px;margin-top:12px">
+      <button class="btn primary" onclick="copyDebriefPrompt()" id="debriefBtn">DEBRIEF</button>
+      <button class="btn" onclick="resetSession()">AGAIN</button>
+    </div>
+    <textarea id="promptBox" readonly style="display:none;margin-top:14px;background:#1a1a1a;border:1px solid var(--accent-dim);color:var(--accent);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.05em;padding:10px;border-radius:2px;width:280px;height:80px;resize:none;line-height:1.5;"></textarea>
+    <div id="copyConfirm" style="font-size:10px;letter-spacing:0.12em;color:var(--accent-dim);margin-top:10px;opacity:0;transition:opacity 0.3s ease;text-transform:uppercase;text-align:center;max-width:260px;"></div>
+  </div>
+</div>
+
+<script>
+  // PROTOCOL DEFINITIONS
+  // Each phase: { label, duration (s), style }
+  const PROTOCOLS = {
+    preworkout: {
+      name: 'Pre-Workout',
+      badge: 'BOX 4·4·4·4',
+      completeSub: 'Ready to work',
+      rounds: 15,
+      durations: [4, 8, 11, 15],
+      phases: [
+        { label: 'inhale',  dur: 4, style: 'expanding' },
+        { label: 'hold',    dur: 4, style: 'holding-in' },
+        { label: 'exhale',  dur: 4, style: 'contracting' },
+        { label: 'hold',    dur: 4, style: 'holding-out' },
+      ]
+    },
+    postworkout: {
+      name: 'Post-Workout',
+      badge: 'SLOW BREATHING 6·6',
+      completeSub: 'Session complete',
+      rounds: 10,
+      durations: [5, 8, 10],
+      phases: [
+        { label: 'inhale',  dur: 6, style: 'expanding' },
+        { label: 'exhale',  dur: 6, style: 'contracting' },
+      ]
+    },
+    resonancetest: {
+      name: 'Find Your Rate',
+      badge: 'RATE TEST · 5 STAGES',
+      completeSub: 'Compare your heart-rate waves afterward',
+      rounds: 55,
+      durations: [55],
+      rates: [6.5, 6, 5.5, 5, 4.5],
+      phases: []
+    },
+    cortisol: {
+      name: 'Cortisol Reset',
+      badge: 'PHYSIOLOGICAL SIGH',
+      completeSub: 'Stress cleared',
+      rounds: 10,
+      durations: [5, 10, 15],
+      phases: [
+        { label: 'inhale 1', dur: 2, style: 'sigh-inhale1' },
+        { label: 'inhale 2', dur: 1, style: 'sigh-inhale2' },
+        { label: 'exhale',   dur: 8, style: 'sigh-exhale' },
+      ]
+    },
+    sleep: {
+      name: 'Pre-Sleep',
+      badge: '4-7-8',
+      completeSub: 'Sleep well',
+      rounds: 8,
+      durations: [4, 6, 8],
+      phases: [
+        { label: 'inhale', dur: 4,  style: 'expanding' },
+        { label: 'hold',   dur: 7,  style: 'holding-in' },
+        { label: 'exhale', dur: 8,  style: 'contracting' },
+      ]
+    }
+  };
+
+  // State
+  let currentMode = null;
+  let protocol = null;
+  let activeRounds = 0;
+  let running = false, paused = false;
+  let currentRound = 0, currentPhaseIdx = 0;
+  let phaseSecondsLeft = 0, totalSecondsLeft = 0, totalSeconds = 0;
+  let phaseEndTime = 0, totalEndTime = 0; // absolute timestamps (ms) the current phase/session should end at
+  let ticker = null;
+  let sessionStartTime = null, sessionEndTime = null;
+  let pauseStartedAt = null, pauseSpans = [];
+  let phasePlan = [], planIdx = 0;
+
+  // DOM
+  const modeScreen    = document.getElementById('modeScreen');
+  const sessionScreen = document.getElementById('sessionScreen');
+  const breathCircle  = document.getElementById('breathCircle');
+  const phaseCount    = document.getElementById('phaseCount');
+  const phaseLabel    = document.getElementById('phaseLabel');
+  const ringProgress  = document.getElementById('ringProgress');
+  const roundDisplay  = document.getElementById('roundDisplay');
+  const timeDisplay   = document.getElementById('timeDisplay');
+  const totalRoundsDisplay = document.getElementById('totalRoundsDisplay');
+  const mainBtn       = document.getElementById('mainBtn');
+  const idleHint      = document.getElementById('idleHint');
+  const sessionBar    = document.getElementById('sessionBar');
+  const completeOverlay = document.getElementById('completeOverlay');
+  const cycleDots     = document.getElementById('cycleDots');
+  const durationPicker = document.getElementById('durationPicker');
+  const completeRounds = document.getElementById('completeRounds');
+
+  function cycleSeconds() {
+    if (currentMode === 'resonancetest') return 600 / 55;
+    return protocol.phases.reduce((s, p) => s + p.dur, 0);
+  }
+
+  // Refresh the idle round/time readout for the current activeRounds
+  function refreshIdleTotals() {
+    totalSeconds = activeRounds * cycleSeconds();
+    totalSecondsLeft = totalSeconds;
+    totalRoundsDisplay.textContent = activeRounds;
+    timeDisplay.textContent = formatTime(totalSeconds);
+  }
+
+  function setRounds(r) {
+    activeRounds = r;
+    try { localStorage.setItem('hrvpacer-rounds-' + currentMode, String(r)); } catch (e) {}
+    // only safe to touch totals when not mid-session
+    if (!running) refreshIdleTotals();
+    // update chip highlight
+    durationPicker.querySelectorAll('.dur-chip').forEach(function (c) {
+      c.classList.toggle('selected', parseInt(c.dataset.rounds, 10) === r);
+    });
+  }
+
+  function buildDurationPicker() {
+    durationPicker.innerHTML = '';
+    const cyc = cycleSeconds();
+    (protocol.durations || [protocol.rounds]).forEach(function (r) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'dur-chip';
+      chip.dataset.rounds = r;
+      const isDefault = (r === protocol.rounds);
+      chip.innerHTML =
+        '<span class="dur-chip-time">' + formatTime(r * cyc) + '</span>' +
+        '<span class="dur-chip-rounds">' + r + ' rnd</span>' +
+        (isDefault ? '<span class="dur-chip-default">default</span>' : '');
+      bindTap(chip, function () { setRounds(r); });
+      durationPicker.appendChild(chip);
+    });
+  }
+
+  function selectMode(mode) {
+    currentMode = mode;
+    protocol = PROTOCOLS[mode];
+
+    // Pick rounds: last-used for this mode if valid, else the protocol default
+    let saved = null;
+    try { saved = parseInt(localStorage.getItem('hrvpacer-rounds-' + mode), 10); } catch (e) {}
+    const allowed = protocol.durations || [protocol.rounds];
+    activeRounds = (saved && allowed.indexOf(saved) !== -1) ? saved : protocol.rounds;
+
+    buildDurationPicker();
+    durationPicker.classList.toggle('hidden', mode === 'resonancetest');
+
+    // Update UI labels
+    document.getElementById('sessionTitle').textContent = protocol.name.toUpperCase();
+    document.getElementById('protocolBadge').textContent = protocol.badge;
+    document.getElementById('completeSub').textContent = protocol.completeSub;
+    refreshIdleTotals();
+    setRounds(activeRounds);
+    roundDisplay.textContent = 0;
+    phaseCount.textContent = '—';
+    phaseLabel.textContent = 'ready';
+    sessionBar.style.width = '0%';
+    breathCircle.className = 'breath-circle';
+
+    buildDots();
+
+    modeScreen.classList.add('hidden');
+    sessionScreen.classList.remove('hidden');
+
+    idleHint.textContent = mode === 'resonancetest' ?
+      'Start an Other workout on your watch. This pacer does not measure your rate.' :
+      'optional: an Other workout on your watch picks up more heart rate detail';
+    setTimeout(() => idleHint.classList.add('visible'), 600);
+  }
+
+  function goBack() {
+    if (running) { clearInterval(ticker); running = false; paused = false; }
+    sessionStartTime = null; sessionEndTime = null; pauseStartedAt = null; pauseSpans = [];
+    completeOverlay.classList.remove('visible');
+    sessionScreen.classList.add('hidden');
+    modeScreen.classList.remove('hidden');
+    idleHint.classList.remove('visible');
+    window.scrollTo(0, 0);
+  }
+
+  function buildDots() {
+    cycleDots.innerHTML = '';
+    (currentMode === 'resonancetest' ? [{}, {}] : protocol.phases).forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === currentPhaseIdx ? ' active' : '');
+      cycleDots.appendChild(d);
+    });
+  }
+
+  function updateDots() {
+    const dots = cycleDots.querySelectorAll('.dot');
+    dots.forEach((d, i) => {
+      d.className = 'dot' + (i === currentPhaseIdx ? ' active' : (i < currentPhaseIdx ? ' done' : ''));
+    });
+  }
+
+  function formatTime(s) {
+    s = Math.ceil(s - 0.00001);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2,'0')}`;
+  }
+
+  function applyPhaseStyle(phaseIdx) {
+    const phase = phasePlan[phaseIdx] || protocol.phases[phaseIdx];
+    const style = phase.style;
+    breathCircle.style.setProperty('--phase-dur', phase.dur + 's');
+    breathCircle.className = 'breath-circle';
+    void breathCircle.offsetWidth;
+    breathCircle.classList.add(style);
+  }
+
+  function updateRing() {
+    const phaseDur = phasePlan[planIdx].dur;
+    const pct = phasePlan.length ? Math.max(0, Math.min(1, (phaseDur - (phaseEndTime - Date.now()) / 1000) / phaseDur)) : 0;
+    const circumference = 754;
+    ringProgress.style.strokeDashoffset = circumference - (pct * circumference);
+  }
+
+  function makePhasePlan() {
+    let plan = [], at = 0;
+    function add(phase, round, stage) {
+      plan.push({label: phase.label, dur: phase.dur, style: phase.style,
+        start: at, end: at + phase.dur, round, stage});
+      at += phase.dur;
+    }
+    if (currentMode === 'resonancetest') {
+      protocol.rates.forEach((rate, stage) => {
+        const rounds = Math.round(rate * 2);
+        const cycle = 60 / rate;
+        for (let r = 0; r < rounds; r++) {
+          const round = protocol.rates.slice(0, stage).reduce((n, prior) => n + Math.round(prior * 2), 0) + r;
+          add({label: 'inhale', dur: cycle * 0.45, style: 'expanding'}, round, stage);
+          add({label: 'exhale', dur: cycle * 0.55, style: 'contracting'}, round, stage);
+        }
+      });
+    } else {
+      for (let r = 0; r < activeRounds; r++) {
+        protocol.phases.forEach(p => add(p, r, 0));
+      }
+    }
+    return plan;
+  }
+
+  // Position derives from active elapsed time, not the number of timer callbacks.
+  // A suspended tab skips missed phases instead of playing stale cues on return.
+  function tick() {
+    if (!running || paused) return;
+    const now = Date.now();
+    const activeMs = now - sessionStartTime.getTime() - totalPausedMs(now);
+    const activeSeconds = Math.max(0, activeMs / 1000);
+    if (activeSeconds >= totalSeconds) {
+      currentRound = activeRounds;
+      roundDisplay.textContent = currentRound;
+      totalSecondsLeft = 0;
+      timeDisplay.textContent = '0:00';
+      finishSession();
+      return;
+    }
+    while (planIdx < phasePlan.length - 1 && activeSeconds >= phasePlan[planIdx].end - 0.00001) planIdx++;
+    const phase = phasePlan[planIdx];
+    const elapsedInPhase = Math.max(0, activeSeconds - phase.start);
+    const idx = currentMode === 'resonancetest' ? planIdx % 2 : planIdx % protocol.phases.length;
+    const changed = idx !== currentPhaseIdx || phase.round !== currentRound;
+    currentPhaseIdx = idx;
+    currentRound = phase.round;
+    phaseSecondsLeft = Math.ceil(phase.dur - elapsedInPhase);
+    totalSecondsLeft = Math.ceil(totalSeconds - activeSeconds);
+    phaseEndTime = now + (phase.dur - elapsedInPhase) * 1000;
+    totalEndTime = now + (totalSeconds - activeSeconds) * 1000;
+    roundDisplay.textContent = currentRound;
+    timeDisplay.textContent = formatTime(totalSecondsLeft);
+    phaseCount.textContent = phaseSecondsLeft;
+    phaseLabel.textContent = phase.label;
+    if (currentMode === 'resonancetest') {
+      document.getElementById('protocolBadge').textContent =
+        protocol.rates[phase.stage] + ' BREATHS/MIN · ' + (phase.stage + 1) + '/5';
+    }
+    sessionBar.style.width = (activeSeconds / totalSeconds * 100) + '%';
+    if (changed) {
+      applyPhaseStyle(planIdx);
+      updateDots();
+    }
+    breathCircle.style.animationDelay = '-' + elapsedInPhase + 's';
+    updateRing();
+  }
+
+  function totalPausedMs(now) {
+    return pauseSpans.reduce((sum, span) => sum + (span.end.getTime() - span.start.getTime()), 0) +
+      (pauseStartedAt ? now - pauseStartedAt.getTime() : 0);
+  }
+
+  function startSession() {
+    running = true; paused = false;
+    pauseSpans = []; pauseStartedAt = null;
+    sessionStartTime = new Date(); sessionEndTime = null;
+    currentRound = 0; currentPhaseIdx = 0;
+    phasePlan = makePhasePlan(); planIdx = 0;
+    phaseSecondsLeft = Math.ceil(phasePlan[0].dur);
+    totalSeconds = phasePlan[phasePlan.length - 1].end;
+    totalSecondsLeft = totalSeconds;
+
+    const now = Date.now();
+    phaseEndTime = now + phaseSecondsLeft * 1000;
+    totalEndTime = now + totalSecondsLeft * 1000;
+
+    durationPicker.classList.add('hidden');
+    roundDisplay.textContent = 0;
+    timeDisplay.textContent = formatTime(totalSeconds);
+    phaseCount.textContent = Math.ceil(phaseSecondsLeft);
+    phaseLabel.textContent = phasePlan[0].label;
+
+    mainBtn.textContent = 'PAUSE';
+    idleHint.classList.remove('visible');
+    applyPhaseStyle(0);
+    buildDots();
+    updateRing();
+
+    ticker = setInterval(tick, 250);
+  }
+
+  function pauseSession() {
+    tick();
+    if (!running) return;
+    paused = true; pauseStartedAt = new Date();
+    breathCircle.style.animationPlayState = 'paused';
+    mainBtn.textContent = 'RESUME'; clearInterval(ticker);
+  }
+
+  function resumeSession() {
+    const now = new Date();
+    if (pauseStartedAt) pauseSpans.push({start: pauseStartedAt, end: now});
+    pauseStartedAt = null;
+    paused = false; mainBtn.textContent = 'PAUSE';
+    breathCircle.style.animationPlayState = 'running';
+    tick();
+    ticker = setInterval(tick, 250);
+  }
+
+  function finishSession() {
+    running = false;
+    clearInterval(ticker);
+    sessionEndTime = new Date();
+    breathCircle.style.animationPlayState = 'running';
+    breathCircle.style.animationDelay = '0s';
+    breathCircle.className = 'breath-circle';
+    phaseCount.textContent = '✓';
+    phaseLabel.textContent = 'complete';
+    sessionBar.style.width = '100%';
+    const mins = Math.round(totalSeconds / 60);
+    completeRounds.textContent = currentMode === 'resonancetest' ?
+      '5 rates · 2 min each · 10 min' : `${currentRound} rounds · ${mins} min`;
+    completeOverlay.classList.add('visible');
+  }
+
+  function resetSession() {
+    running = false; paused = false;
+    clearInterval(ticker);
+    sessionStartTime = null; sessionEndTime = null; pauseStartedAt = null; pauseSpans = [];
+    breathCircle.style.animationPlayState = 'running';
+    breathCircle.style.animationDelay = '0s';
+    completeOverlay.classList.remove('visible');
+    currentRound = 0; currentPhaseIdx = 0;
+    totalSeconds = activeRounds * cycleSeconds();
+    totalSecondsLeft = totalSeconds;
+    phaseSecondsLeft = currentMode === 'resonancetest' ? 60 / 6.5 * 0.45 : protocol.phases[0].dur;
+    phasePlan = []; planIdx = 0;
+    document.getElementById('protocolBadge').textContent = protocol.badge;
+
+    durationPicker.classList.toggle('hidden', currentMode === 'resonancetest');
+    phaseCount.textContent = '—';
+    phaseLabel.textContent = 'ready';
+    roundDisplay.textContent = 0;
+    timeDisplay.textContent = formatTime(totalSeconds);
+    sessionBar.style.width = '0%';
+    mainBtn.textContent = 'START';
+    breathCircle.className = 'breath-circle';
+    document.getElementById('debriefBtn').style.display = '';
+    document.getElementById('promptBox').style.display = 'none';
+    document.getElementById('copyConfirm').style.opacity = '0';
+    idleHint.classList.add('visible');
+    ringProgress.style.strokeDashoffset = 754;
+    buildDots();
+  }
+
+  function sessionDebrief() {
+    if (!sessionStartTime) return '';
+    const end = sessionEndTime || new Date();
+    const iso = d => d.toISOString();
+    const local = d => d.toLocaleString([], {year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short'});
+    const pausedMs = totalPausedMs(end.getTime());
+    const wallSeconds = Math.max(0, Math.round((end - sessionStartTime) / 1000));
+    const elapsedUnpaused = Math.max(0, Math.round(((end - sessionStartTime) - pausedMs) / 1000));
+    const activeSeconds = Math.min(totalSeconds, elapsedUnpaused);
+    const phases = currentMode === 'resonancetest' ?
+      '6.5, 6, 5.5, 5, 4.5 breaths/min; 2 min each; inhale 45%, exhale 55%; no holds' :
+      protocol.phases.map(p => p.label + ' ' + p.dur + 's').join(', ');
+    const pauses = pauseSpans.map(p => iso(p.start) + ' to ' + iso(p.end));
+    const data = [
+      'Breathwork session',
+      'Protocol: ' + protocol.name + ' (' + protocol.badge + ')',
+      'Phases: ' + phases,
+      'Completed rounds: ' + currentRound,
+      'Started: ' + iso(sessionStartTime) + ' (' + local(sessionStartTime) + ')',
+      'Ended: ' + iso(end) + ' (' + local(end) + ')',
+      'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone,
+      'Wall time: ' + wallSeconds + 's',
+      'Planned paced time completed: ' + Math.round(activeSeconds) + 's',
+      ...(elapsedUnpaused > totalSeconds + 1 ? ['Timer resumed after planned end; exact final breath is unknown.'] : []),
+      'Paused time: ' + Math.round(pausedMs / 1000) + 's',
+      'Pause spans: ' + (pauses.length ? pauses.join('; ') : 'none'),
+      'Sensor data: not recorded by this web app',
+      ...(currentMode === 'resonancetest' ? ['Rate test: compare clean heart-rate waves for each stage separately; this pacer does not choose an optimum.'] : [])
+    ];
+    return data.join('\n');
+  }
+
+  function copyDebriefPrompt() {
+    const prompt = sessionDebrief();
+    if (!prompt) return;
+    const tryClipboard = navigator.clipboard && navigator.clipboard.writeText(prompt);
+    if (tryClipboard) {
+      tryClipboard.then(() => {
+        const c = document.getElementById('copyConfirm');
+        c.textContent = 'Copied session details';
+        c.style.opacity = '1';
+        setTimeout(() => c.style.opacity = '0', 3000);
+      }).catch(() => showPromptBox(prompt));
+    } else { showPromptBox(prompt); }
+  }
+
+  function showPromptBox(prompt) {
+    document.getElementById('debriefBtn').style.display = 'none';
+    const box = document.getElementById('promptBox');
+    box.value = prompt; box.style.display = 'block';
+    box.focus(); box.select();
+    const c = document.getElementById('copyConfirm');
+    c.textContent = 'Select all → copy session details';
+    c.style.opacity = '1';
+  }
+
+  function handleMain() {
+    if (!running) startSession();
+    else if (!paused) pauseSession();
+    else resumeSession();
+  }
+
+  // Bind mode cards with touch + click. iOS standalone fires touchend reliably
+  // where it sometimes drops click; click stays as the desktop fallback. The
+  // guard suppresses the ghost-click that follows a touch so we never double-fire.
+  function bindTap(el, handler) {
+    let handledByTouch = false;
+    el.addEventListener('touchend', function (e) {
+      handledByTouch = true;
+      e.preventDefault();            // suppress the synthetic click that follows
+      handler();
+      setTimeout(function () { handledByTouch = false; }, 500);
+    }, { passive: false });
+    el.addEventListener('click', function () {
+      if (handledByTouch) return;    // touch already handled this tap
+      handler();
+    });
+  }
+
+  document.querySelectorAll('.mode-card').forEach(function (card) {
+    bindTap(card, function () { selectMode(card.dataset.mode); });
+  });
+
+  // "Session debrief" panel — collapsed by default, expands on tap.
+  const claudeToggle = document.getElementById('claudeToggle');
+  const claudePanel  = document.getElementById('claudePanel');
+
+  function refreshClaudePanelHeight() {
+    if (claudeToggle.classList.contains('open')) {
+      claudePanel.style.maxHeight = claudePanel.scrollHeight + 'px';
+    }
+  }
+
+  function toggleClaudePanel() {
+    const isOpen = claudeToggle.classList.toggle('open');
+    claudeToggle.setAttribute('aria-expanded', String(isOpen));
+    if (isOpen) {
+      refreshClaudePanelHeight();
+      setTimeout(function () {
+        claudeToggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+    } else {
+      claudePanel.style.maxHeight = '0px';
+    }
+  }
+  bindTap(claudeToggle, toggleClaudePanel);
+
+  // Recompute the open panel's height after things that can reflow its
+  // content without firing a click on it: viewport resize/rotation, and
+  // the webfont swap (Bebas Neue/DM Mono load async via @import).
+  window.addEventListener('resize', refreshClaudePanelHeight);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(refreshClaudePanelHeight);
+  }
+
+  const claudeSnippetStatus = document.getElementById('claudeSnippetStatus');
+  let claudeSnippetStatusTimer = null;
+
+  function setClaudeSnippetStatus(text) {
+    claudeSnippetStatus.textContent = text;
+    claudeSnippetStatus.classList.add('visible');
+    clearTimeout(claudeSnippetStatusTimer);
+    claudeSnippetStatusTimer = setTimeout(function () {
+      claudeSnippetStatus.classList.remove('visible');
+    }, 2500);
+  }
+
+  function selectClaudeSnippetText() {
+    const node = document.getElementById('claudeSnippetText');
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  bindTap(document.getElementById('claudeSnippetCopy'), function () {
+    const text = document.getElementById('claudeSnippetText').textContent.trim();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(function () { setClaudeSnippetStatus('Copied'); })
+        .catch(function () {
+          selectClaudeSnippetText();
+          setClaudeSnippetStatus('Select all → copy');
+        });
+    } else {
+      selectClaudeSnippetText();
+      setClaudeSnippetStatus('Select all → copy');
+    }
+  });
+</script>
+</body>
+</html>
