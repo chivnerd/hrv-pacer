@@ -98,6 +98,7 @@
 
   .mode-icon {
     font-size: 20px;
+    font-family: system-ui, sans-serif;
     width: 28px;
     text-align: center;
     flex-shrink: 0;
@@ -127,7 +128,7 @@
     letter-spacing: 0.1em;
   }
 
-  /* WORKS WITH CLAUDE PANEL */
+  /* SESSION DEBRIEF PANEL */
   .claude-panel-wrap {
     width: 100%;
     max-width: 320px;
@@ -298,17 +299,17 @@
 
   .header {
     position: fixed;
-    top: 20px;
-    left: 0; right: 0;
+    top: calc(20px + env(safe-area-inset-top));
+    left: 80px; right: 16px;
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     align-items: center;
     gap: 12px;
   }
 
   .back-btn {
     position: fixed;
-    top: 16px;
+    top: calc(16px + env(safe-area-inset-top));
     left: 16px;
     background: none;
     border: none;
@@ -324,6 +325,7 @@
   .back-btn:hover { color: var(--text); }
 
   .session-title {
+    white-space: nowrap;
     font-family: 'Bebas Neue', sans-serif;
     font-size: 12px;
     letter-spacing: 0.25em;
@@ -331,6 +333,7 @@
   }
 
   .protocol-badge {
+    white-space: nowrap;
     font-size: 10px;
     letter-spacing: 0.12em;
     color: var(--accent-dim);
@@ -405,7 +408,7 @@
 
   /* Stats */
   .stats {
-    position: fixed; bottom: 40px;
+    position: fixed; bottom: calc(40px + env(safe-area-inset-bottom));
     display: flex; gap: 40px; align-items: flex-end;
   }
   .stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -415,7 +418,7 @@
   .stat-divider { width: 1px; height: 32px; background: var(--muted); opacity: 0.3; margin-bottom: 4px; }
 
   /* Controls */
-  .controls { position: fixed; bottom: 110px; display: flex; gap: 16px; }
+  .controls { position: fixed; bottom: calc(110px + env(safe-area-inset-bottom)); display: flex; gap: 16px; }
 
   .btn {
     background: none; border: 1px solid var(--muted);
@@ -429,7 +432,7 @@
   .btn.primary:hover { background: rgba(200,240,96,0.12); }
 
   .idle-hint {
-    position: fixed; bottom: 170px;
+    position: fixed; bottom: calc(170px + env(safe-area-inset-bottom));
     font-size: 10px; letter-spacing: 0.13em;
     color: var(--muted); text-transform: uppercase;
     opacity: 0; transition: opacity 0.5s ease;
@@ -515,9 +518,17 @@
       <div class="mode-icon">🔄</div>
       <div class="mode-info">
         <div class="mode-name">Post-Workout</div>
-        <div class="mode-detail">Resonance 5.5·5.5 · 10 rounds · HRV recovery</div>
+        <div class="mode-detail">Slow breathing 6·6 · 10 rounds · recovery</div>
       </div>
       <div class="mode-duration">2 min</div>
+    </button>
+    <button type="button" class="mode-card" data-mode="resonancetest">
+      <div class="mode-icon">~</div>
+      <div class="mode-info">
+        <div class="mode-name">Find your rate</div>
+        <div class="mode-detail">5 rates · 2 min each · no holds</div>
+      </div>
+      <div class="mode-duration">10 min</div>
     </button>
     <button type="button" class="mode-card" data-mode="cortisol">
       <div class="mode-icon">🧘</div>
@@ -539,7 +550,7 @@
 
   <div class="claude-panel-wrap">
     <button type="button" class="claude-toggle" id="claudeToggle" aria-expanded="false">
-      <span class="claude-toggle-label">Works with Claude</span>
+      <span class="claude-toggle-label">Session debrief</span>
       <span class="claude-toggle-hint">optional</span>
       <span class="claude-toggle-icon" id="claudeToggleIcon">+</span>
     </button>
@@ -550,7 +561,7 @@
         <div>
           <div class="claude-section-title">What you need</div>
           <ul class="claude-list">
-            <li>Claude on iPhone, with Health access allowed</li>
+            <li>An app or service with read access to your heart-rate records</li>
             <li>Apple Watch on your wrist</li>
             <li>An "Other" workout started on the watch before tapping START, so it samples heart rate every few seconds instead of every few minutes. Without it, there's usually not quite enough detail to say much.</li>
           </ul>
@@ -558,12 +569,12 @@
 
         <div>
           <div class="claude-section-title">How to use it</div>
-          <p class="claude-section-text">When you finish a session, tap DEBRIEF and paste the copied prompt into Claude.</p>
+          <p class="claude-section-text">When you finish a session, tap DEBRIEF to copy the dated session details. Share them only with a service you trust and explicitly authorize to read your health data. The pacer does not send them anywhere.</p>
         </div>
 
         <div>
           <div class="claude-section-title">Optional context</div>
-          <p class="claude-section-text">You can add this to a Claude Project's instructions:</p>
+          <p class="claude-section-text">Optional context for your own debrief workflow:</p>
           <div class="claude-snippet">
             <div class="claude-snippet-text" id="claudeSnippetText">Breathwork debriefs come from the HRV Pacer app. Lead with how the session went — did heart rate settle, did it hold steady, did it drift up. Numbers are supporting detail, not the headline. Compare against recent sessions when there's something worth noting, and skip the comparison when there isn't. Keep the tone warm and steady, like a friend checking in — not a lab report.</div>
             <button type="button" class="btn claude-snippet-copy" id="claudeSnippetCopy">COPY</button>
@@ -657,14 +668,23 @@
     },
     postworkout: {
       name: 'Post-Workout',
-      badge: 'RESONANCE 5.5·5.5',
-      completeSub: 'HRV restored',
+      badge: 'SLOW BREATHING 6·6',
+      completeSub: 'Session complete',
       rounds: 10,
       durations: [5, 8, 10],
       phases: [
-        { label: 'inhale',  dur: 6, style: 'expanding' },  // 5.5 rounded to 6s for clean UX
+        { label: 'inhale',  dur: 6, style: 'expanding' },
         { label: 'exhale',  dur: 6, style: 'contracting' },
       ]
+    },
+    resonancetest: {
+      name: 'Find Your Rate',
+      badge: 'RATE TEST · 5 STAGES',
+      completeSub: 'Compare your heart-rate waves afterward',
+      rounds: 55,
+      durations: [55],
+      rates: [6.5, 6, 5.5, 5, 4.5],
+      phases: []
     },
     cortisol: {
       name: 'Cortisol Reset',
@@ -702,6 +722,8 @@
   let phaseEndTime = 0, totalEndTime = 0; // absolute timestamps (ms) the current phase/session should end at
   let ticker = null;
   let sessionStartTime = null, sessionEndTime = null;
+  let pauseStartedAt = null, pauseSpans = [];
+  let phasePlan = [], planIdx = 0;
 
   // DOM
   const modeScreen    = document.getElementById('modeScreen');
@@ -722,6 +744,7 @@
   const completeRounds = document.getElementById('completeRounds');
 
   function cycleSeconds() {
+    if (currentMode === 'resonancetest') return 600 / 55;
     return protocol.phases.reduce((s, p) => s + p.dur, 0);
   }
 
@@ -773,7 +796,7 @@
     activeRounds = (saved && allowed.indexOf(saved) !== -1) ? saved : protocol.rounds;
 
     buildDurationPicker();
-    durationPicker.classList.remove('hidden');
+    durationPicker.classList.toggle('hidden', mode === 'resonancetest');
 
     // Update UI labels
     document.getElementById('sessionTitle').textContent = protocol.name.toUpperCase();
@@ -792,11 +815,15 @@
     modeScreen.classList.add('hidden');
     sessionScreen.classList.remove('hidden');
 
+    idleHint.textContent = mode === 'resonancetest' ?
+      'Start an Other workout on your watch. This pacer does not measure your rate.' :
+      'optional: an Other workout on your watch picks up more heart rate detail';
     setTimeout(() => idleHint.classList.add('visible'), 600);
   }
 
   function goBack() {
-    if (running) { clearInterval(ticker); running = false; }
+    if (running) { clearInterval(ticker); running = false; paused = false; }
+    sessionStartTime = null; sessionEndTime = null; pauseStartedAt = null; pauseSpans = [];
     completeOverlay.classList.remove('visible');
     sessionScreen.classList.add('hidden');
     modeScreen.classList.remove('hidden');
@@ -806,7 +833,7 @@
 
   function buildDots() {
     cycleDots.innerHTML = '';
-    protocol.phases.forEach((_, i) => {
+    (currentMode === 'resonancetest' ? [{}, {}] : protocol.phases).forEach((_, i) => {
       const d = document.createElement('div');
       d.className = 'dot' + (i === currentPhaseIdx ? ' active' : '');
       cycleDots.appendChild(d);
@@ -821,64 +848,109 @@
   }
 
   function formatTime(s) {
+    s = Math.ceil(s - 0.00001);
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${m}:${sec.toString().padStart(2,'0')}`;
   }
 
   function applyPhaseStyle(phaseIdx) {
-    const style = protocol.phases[phaseIdx].style;
+    const phase = phasePlan[phaseIdx] || protocol.phases[phaseIdx];
+    const style = phase.style;
+    breathCircle.style.setProperty('--phase-dur', phase.dur + 's');
     breathCircle.className = 'breath-circle';
     void breathCircle.offsetWidth;
     breathCircle.classList.add(style);
   }
 
   function updateRing() {
-    const phaseDur = protocol.phases[currentPhaseIdx].dur;
-    const pct = (phaseDur - phaseSecondsLeft) / phaseDur;
+    const phaseDur = phasePlan[planIdx].dur;
+    const pct = phasePlan.length ? Math.max(0, Math.min(1, (phaseDur - (phaseEndTime - Date.now()) / 1000) / phaseDur)) : 0;
     const circumference = 754;
     ringProgress.style.strokeDashoffset = circumference - (pct * circumference);
   }
 
-  // Ticks run off absolute end timestamps (phaseEndTime/totalEndTime) rather than
-  // decrementing a counter each call, so backgrounded/throttled tabs don't drift
-  // the displayed time away from the actual elapsed wall-clock time.
+  function makePhasePlan() {
+    let plan = [], at = 0;
+    function add(phase, round, stage) {
+      plan.push({label: phase.label, dur: phase.dur, style: phase.style,
+        start: at, end: at + phase.dur, round, stage});
+      at += phase.dur;
+    }
+    if (currentMode === 'resonancetest') {
+      protocol.rates.forEach((rate, stage) => {
+        const rounds = Math.round(rate * 2);
+        const cycle = 60 / rate;
+        for (let r = 0; r < rounds; r++) {
+          const round = protocol.rates.slice(0, stage).reduce((n, prior) => n + Math.round(prior * 2), 0) + r;
+          add({label: 'inhale', dur: cycle * 0.45, style: 'expanding'}, round, stage);
+          add({label: 'exhale', dur: cycle * 0.55, style: 'contracting'}, round, stage);
+        }
+      });
+    } else {
+      for (let r = 0; r < activeRounds; r++) {
+        protocol.phases.forEach(p => add(p, r, 0));
+      }
+    }
+    return plan;
+  }
+
+  // Position derives from active elapsed time, not the number of timer callbacks.
+  // A suspended tab skips missed phases instead of playing stale cues on return.
   function tick() {
     if (!running || paused) return;
     const now = Date.now();
-    phaseSecondsLeft = Math.max(0, Math.ceil((phaseEndTime - now) / 1000));
-    totalSecondsLeft = Math.max(0, Math.ceil((totalEndTime - now) / 1000));
-
-    updateRing();
-    timeDisplay.textContent = formatTime(totalSecondsLeft);
-    sessionBar.style.width = ((totalSeconds - totalSecondsLeft) / totalSeconds * 100) + '%';
-
-    if (phaseEndTime - now <= 0) {
-      currentPhaseIdx++;
-      if (currentPhaseIdx >= protocol.phases.length) {
-        currentPhaseIdx = 0;
-        currentRound++;
-        roundDisplay.textContent = currentRound;
-      }
-      if (currentRound >= activeRounds) { finishSession(); return; }
-
-      const nextDur = protocol.phases[currentPhaseIdx].dur;
-      phaseEndTime = now + nextDur * 1000;
-      phaseSecondsLeft = nextDur;
-      phaseLabel.textContent = protocol.phases[currentPhaseIdx].label;
-      phaseCount.textContent = phaseSecondsLeft;
-      applyPhaseStyle(currentPhaseIdx);
-      updateDots();
-    } else {
-      phaseCount.textContent = phaseSecondsLeft;
+    const activeMs = now - sessionStartTime.getTime() - totalPausedMs(now);
+    const activeSeconds = Math.max(0, activeMs / 1000);
+    if (activeSeconds >= totalSeconds) {
+      currentRound = activeRounds;
+      roundDisplay.textContent = currentRound;
+      totalSecondsLeft = 0;
+      timeDisplay.textContent = '0:00';
+      finishSession();
+      return;
     }
+    while (planIdx < phasePlan.length - 1 && activeSeconds >= phasePlan[planIdx].end - 0.00001) planIdx++;
+    const phase = phasePlan[planIdx];
+    const elapsedInPhase = Math.max(0, activeSeconds - phase.start);
+    const idx = currentMode === 'resonancetest' ? planIdx % 2 : planIdx % protocol.phases.length;
+    const changed = idx !== currentPhaseIdx || phase.round !== currentRound;
+    currentPhaseIdx = idx;
+    currentRound = phase.round;
+    phaseSecondsLeft = Math.ceil(phase.dur - elapsedInPhase);
+    totalSecondsLeft = Math.ceil(totalSeconds - activeSeconds);
+    phaseEndTime = now + (phase.dur - elapsedInPhase) * 1000;
+    totalEndTime = now + (totalSeconds - activeSeconds) * 1000;
+    roundDisplay.textContent = currentRound;
+    timeDisplay.textContent = formatTime(totalSecondsLeft);
+    phaseCount.textContent = phaseSecondsLeft;
+    phaseLabel.textContent = phase.label;
+    if (currentMode === 'resonancetest') {
+      document.getElementById('protocolBadge').textContent =
+        protocol.rates[phase.stage] + ' BREATHS/MIN · ' + (phase.stage + 1) + '/5';
+    }
+    sessionBar.style.width = (activeSeconds / totalSeconds * 100) + '%';
+    if (changed) {
+      applyPhaseStyle(planIdx);
+      updateDots();
+    }
+    breathCircle.style.animationDelay = '-' + elapsedInPhase + 's';
+    updateRing();
+  }
+
+  function totalPausedMs(now) {
+    return pauseSpans.reduce((sum, span) => sum + (span.end.getTime() - span.start.getTime()), 0) +
+      (pauseStartedAt ? now - pauseStartedAt.getTime() : 0);
   }
 
   function startSession() {
     running = true; paused = false;
+    pauseSpans = []; pauseStartedAt = null;
+    sessionStartTime = new Date(); sessionEndTime = null;
     currentRound = 0; currentPhaseIdx = 0;
-    phaseSecondsLeft = protocol.phases[0].dur;
-    totalSeconds = activeRounds * cycleSeconds();
+    phasePlan = makePhasePlan(); planIdx = 0;
+    phaseSecondsLeft = Math.ceil(phasePlan[0].dur);
+    totalSeconds = phasePlan[phasePlan.length - 1].end;
     totalSecondsLeft = totalSeconds;
 
     const now = Date.now();
@@ -888,8 +960,8 @@
     durationPicker.classList.add('hidden');
     roundDisplay.textContent = 0;
     timeDisplay.textContent = formatTime(totalSeconds);
-    phaseCount.textContent = phaseSecondsLeft;
-    phaseLabel.textContent = protocol.phases[0].label;
+    phaseCount.textContent = Math.ceil(phaseSecondsLeft);
+    phaseLabel.textContent = phasePlan[0].label;
 
     mainBtn.textContent = 'PAUSE';
     idleHint.classList.remove('visible');
@@ -897,20 +969,24 @@
     buildDots();
     updateRing();
 
-    sessionStartTime = new Date();
-    sessionEndTime = null;
     ticker = setInterval(tick, 250);
   }
 
   function pauseSession() {
-    paused = true; mainBtn.textContent = 'RESUME'; clearInterval(ticker);
+    tick();
+    if (!running) return;
+    paused = true; pauseStartedAt = new Date();
+    breathCircle.style.animationPlayState = 'paused';
+    mainBtn.textContent = 'RESUME'; clearInterval(ticker);
   }
 
   function resumeSession() {
+    const now = new Date();
+    if (pauseStartedAt) pauseSpans.push({start: pauseStartedAt, end: now});
+    pauseStartedAt = null;
     paused = false; mainBtn.textContent = 'PAUSE';
-    const now = Date.now();
-    phaseEndTime = now + phaseSecondsLeft * 1000;
-    totalEndTime = now + totalSecondsLeft * 1000;
+    breathCircle.style.animationPlayState = 'running';
+    tick();
     ticker = setInterval(tick, 250);
   }
 
@@ -918,25 +994,33 @@
     running = false;
     clearInterval(ticker);
     sessionEndTime = new Date();
+    breathCircle.style.animationPlayState = 'running';
+    breathCircle.style.animationDelay = '0s';
     breathCircle.className = 'breath-circle';
     phaseCount.textContent = '✓';
     phaseLabel.textContent = 'complete';
     sessionBar.style.width = '100%';
     const mins = Math.round(totalSeconds / 60);
-    completeRounds.textContent = `${currentRound} rounds · ${mins} min`;
+    completeRounds.textContent = currentMode === 'resonancetest' ?
+      '5 rates · 2 min each · 10 min' : `${currentRound} rounds · ${mins} min`;
     completeOverlay.classList.add('visible');
   }
 
   function resetSession() {
     running = false; paused = false;
     clearInterval(ticker);
+    sessionStartTime = null; sessionEndTime = null; pauseStartedAt = null; pauseSpans = [];
+    breathCircle.style.animationPlayState = 'running';
+    breathCircle.style.animationDelay = '0s';
     completeOverlay.classList.remove('visible');
     currentRound = 0; currentPhaseIdx = 0;
     totalSeconds = activeRounds * cycleSeconds();
     totalSecondsLeft = totalSeconds;
-    phaseSecondsLeft = protocol.phases[0].dur;
+    phaseSecondsLeft = currentMode === 'resonancetest' ? 60 / 6.5 * 0.45 : protocol.phases[0].dur;
+    phasePlan = []; planIdx = 0;
+    document.getElementById('protocolBadge').textContent = protocol.badge;
 
-    durationPicker.classList.remove('hidden');
+    durationPicker.classList.toggle('hidden', currentMode === 'resonancetest');
     phaseCount.textContent = '—';
     phaseLabel.textContent = 'ready';
     roundDisplay.textContent = 0;
@@ -952,16 +1036,46 @@
     buildDots();
   }
 
-  function copyDebriefPrompt() {
-    if (!sessionStartTime) return;
+  function sessionDebrief() {
+    if (!sessionStartTime) return '';
     const end = sessionEndTime || new Date();
-    const fmt = (d) => d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    const prompt = `Breathwork debrief — ${protocol.badge}, ${currentRound} rounds, ${fmt(sessionStartTime)}–${fmt(end)}. Pull my heart rate for that window and give me a short, warm, plain-language read on how it went — did heart rate settle, hold steady, or drift up. Numbers are supporting detail, not the headline.`;
+    const iso = d => d.toISOString();
+    const local = d => d.toLocaleString([], {year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short'});
+    const pausedMs = totalPausedMs(end.getTime());
+    const wallSeconds = Math.max(0, Math.round((end - sessionStartTime) / 1000));
+    const elapsedUnpaused = Math.max(0, Math.round(((end - sessionStartTime) - pausedMs) / 1000));
+    const activeSeconds = Math.min(totalSeconds, elapsedUnpaused);
+    const phases = currentMode === 'resonancetest' ?
+      '6.5, 6, 5.5, 5, 4.5 breaths/min; 2 min each; inhale 45%, exhale 55%; no holds' :
+      protocol.phases.map(p => p.label + ' ' + p.dur + 's').join(', ');
+    const pauses = pauseSpans.map(p => iso(p.start) + ' to ' + iso(p.end));
+    const data = [
+      'Breathwork session',
+      'Protocol: ' + protocol.name + ' (' + protocol.badge + ')',
+      'Phases: ' + phases,
+      'Completed rounds: ' + currentRound,
+      'Started: ' + iso(sessionStartTime) + ' (' + local(sessionStartTime) + ')',
+      'Ended: ' + iso(end) + ' (' + local(end) + ')',
+      'Timezone: ' + Intl.DateTimeFormat().resolvedOptions().timeZone,
+      'Wall time: ' + wallSeconds + 's',
+      'Planned paced time completed: ' + Math.round(activeSeconds) + 's',
+      ...(elapsedUnpaused > totalSeconds + 1 ? ['Timer resumed after planned end; exact final breath is unknown.'] : []),
+      'Paused time: ' + Math.round(pausedMs / 1000) + 's',
+      'Pause spans: ' + (pauses.length ? pauses.join('; ') : 'none'),
+      'Sensor data: not recorded by this web app',
+      ...(currentMode === 'resonancetest' ? ['Rate test: compare clean heart-rate waves for each stage separately; this pacer does not choose an optimum.'] : [])
+    ];
+    return data.join('\n');
+  }
+
+  function copyDebriefPrompt() {
+    const prompt = sessionDebrief();
+    if (!prompt) return;
     const tryClipboard = navigator.clipboard && navigator.clipboard.writeText(prompt);
     if (tryClipboard) {
       tryClipboard.then(() => {
         const c = document.getElementById('copyConfirm');
-        c.textContent = 'Copied — paste into Claude';
+        c.textContent = 'Copied session details';
         c.style.opacity = '1';
         setTimeout(() => c.style.opacity = '0', 3000);
       }).catch(() => showPromptBox(prompt));
@@ -974,7 +1088,7 @@
     box.value = prompt; box.style.display = 'block';
     box.focus(); box.select();
     const c = document.getElementById('copyConfirm');
-    c.textContent = 'Select all → copy → paste into Claude';
+    c.textContent = 'Select all → copy session details';
     c.style.opacity = '1';
   }
 
@@ -1005,7 +1119,7 @@
     bindTap(card, function () { selectMode(card.dataset.mode); });
   });
 
-  // "Works with Claude" panel — collapsed by default, expands on tap.
+  // "Session debrief" panel — collapsed by default, expands on tap.
   const claudeToggle = document.getElementById('claudeToggle');
   const claudePanel  = document.getElementById('claudePanel');
 
